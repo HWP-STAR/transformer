@@ -65,7 +65,31 @@ def train(model, train_loader, val_loader, epochs, optimizer, criterion, device,
         elapsed = time.time() - start
         print(f'Epoch {epoch:2d}/{epochs} | train_loss: {train_loss:.4f} | val_loss: {val_loss:.4f} | time: {elapsed:.1f}s')
 
-        if val_loss < best_val_loss:
+        if val_loss < best_val_loss and epoch+1 >5:
             best_val_loss = val_loss
-            torch.save(model.state_dict(), f'{save_path}/best_model.pt')
+            torch.save(model.state_dict(), f'{save_path}/best_model_{epoch+1}.pt')
             print(f'  -> saved best model (val_loss: {val_loss:.4f})')
+
+
+
+@torch.no_grad()
+def generate_text(
+    model,
+    tokenizer,
+    prompt: str,
+    max_new_tokens: int = 50,
+    device: str = "cpu",
+    temperature: float = 0.8,
+    top_k: int = 40,
+) -> str:
+    model.eval()
+    prompt_ids = tokenizer.encode(prompt, truncation=True, max_length=512)
+    if not prompt_ids:
+        prompt_ids = [tokenizer.eos_token_id or 0]
+    idx = torch.tensor([prompt_ids], dtype=torch.long, device=device)
+    generated = model.generate(
+        idx, max_new_tokens=max_new_tokens,
+        temperature=temperature, top_k=top_k,
+    )
+    output_ids = generated[0].tolist()
+    return tokenizer.decode(output_ids)
